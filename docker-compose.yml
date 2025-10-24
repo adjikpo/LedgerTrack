@@ -16,6 +16,19 @@ services:
       - REACT_NATIVE_PACKAGER_HOSTNAME=0.0.0.0
     stdin_open: true
     tty: true
+
+  api:
+    build: ./api
+    working_dir: /app
+    volumes:
+      - ./api:/app
+      - api_node_modules:/app/node_modules
+      - api_data:/app/data
+    env_file:
+      - ./api/.env
+    ports:
+      - "4000:4000"
+
   cli:
     build: .
     image: expo-dev:latest
@@ -30,3 +43,5 @@ services:
 
 volumes:
   expo_node_modules:
+  api_node_modules:
+  api_data:
