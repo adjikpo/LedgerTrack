@@ -1,98 +1,100 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
-
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useAuth } from '@/context/AuthContext';
+import { apiFetch } from '@/lib/api';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const router = useRouter();
+  const { token } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [streak, setStreak] = useState(0);
+  const [mission, setMission] = useState<{ id: string; name: string; completedToday: boolean } | null>(null);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const load = useCallback(async () => {
+    if (!token) return;
+    setLoading(true);
+    try {
+      const data = await apiFetch('/api/home', { token });
+      setStreak(data.streak);
+      setMission({ id: data.mission.id, name: data.mission.name, completedToday: data.mission.completedToday });
+    } catch (e: any) {
+      Alert.alert('Erreur', e.message || 'Chargement impossible');
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const onMissionComplete = async () => {
+    if (!token || !mission) return;
+    try {
+      await apiFetch(`/api/habits/${mission.id}/complete`, { method: 'POST', token });
+      await load();
+    } catch (e: any) {
+      Alert.alert('Erreur', e.message || 'Action impossible');
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>LedgerTrack</Text>
+      </View>
+
+      <View style={styles.card}>
+        <View style={styles.row}>
+          <Ionicons name="flame" size={22} color="#ef4444" />
+          <Text style={styles.cardTitle}>Streak</Text>
+        </View>
+        <Text style={styles.streakValue}>{streak} jours</Text>
+        <Text style={styles.streakHint}>{streak}/30 jours</Text>
+      </View>
+
+      <View style={styles.card}>
+        <Text style={styles.greeting}>Bonjour Sophie ! 👋</Text>
+        <Text style={styles.missionLabel}>Ta mission du jour</Text>
+        {loading && <ActivityIndicator />}
+        {mission && (
+          <>
+            <Text style={styles.missionText}>{mission.name}</Text>
+            {!mission.completedToday ? (
+              <TouchableOpacity style={styles.primaryBtn} onPress={onMissionComplete}>
+                <Ionicons name="checkmark" size={18} color="#fff" />
+                <Text style={styles.primaryBtnText}>Coche Fait !</Text>
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.success}>✅ Mission accomplie !</Text>
+            )}
+          </>
+        )}
+      </View>
+
+      <TouchableOpacity style={styles.linkBtn} onPress={() => router.push('/reminder')}>
+        <Ionicons name="alert" size={18} color="#0ea5e9" />
+        <Text style={styles.linkBtnText}>Voir rappel urgent</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-  },
+  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
+  header: { paddingVertical: 8, alignItems: 'center' },
+  title: { fontSize: 24, fontWeight: '800', color: '#0f172a' },
+  card: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 16, marginBottom: 12 },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  cardTitle: { fontSize: 14, fontWeight: '700', color: '#0f172a', marginLeft: 8 },
+  streakValue: { fontSize: 28, fontWeight: '800', color: '#0f172a' },
+  streakHint: { fontSize: 12, color: '#64748b' },
+  greeting: { fontSize: 18, fontWeight: '700', color: '#0f172a' },
+  missionLabel: { fontSize: 12, color: '#64748b' },
+  missionText: { fontSize: 16, fontWeight: '600', color: '#0f172a' },
+  primaryBtn: { backgroundColor: '#0ea5e9', borderRadius: 12, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', marginTop: 8 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', marginLeft: 8 },
+  success: { color: '#16a34a', fontWeight: '700', marginTop: 8 },
+  linkBtn: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingVertical: 12 },
+  linkBtnText: { color: '#0ea5e9', fontWeight: '600', marginLeft: 6 },
 });

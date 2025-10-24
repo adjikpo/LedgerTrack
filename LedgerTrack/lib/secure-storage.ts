@@ -1,26 +1,20 @@
-const tryRequire = (name: string): any => {
-  try {
-    // @ts-ignore
-    return require(name);
-  } catch {
-    return null;
-  }
-};
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
-let SecureStore: any = tryRequire('expo-secure-store');
+const isNative = Platform.OS !== 'web' && !!SecureStore && typeof (SecureStore as any).getItemAsync === 'function';
 
 export async function setItem(key: string, value: string) {
-  if (SecureStore?.setItemAsync) return SecureStore.setItemAsync(key, value);
+  if (isNative) return (SecureStore as any).setItemAsync(key, value);
   if (typeof localStorage !== 'undefined') localStorage.setItem(key, value);
 }
 
 export async function getItem(key: string) {
-  if (SecureStore?.getItemAsync) return SecureStore.getItemAsync(key);
+  if (isNative) return (SecureStore as any).getItemAsync(key);
   if (typeof localStorage !== 'undefined') return localStorage.getItem(key);
   return null;
 }
 
 export async function deleteItem(key: string) {
-  if (SecureStore?.deleteItemAsync) return SecureStore.deleteItemAsync(key);
+  if (isNative) return (SecureStore as any).deleteItemAsync(key);
   if (typeof localStorage !== 'undefined') localStorage.removeItem(key);
 }
