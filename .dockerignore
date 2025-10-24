@@ -1,0 +1,12 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+README.md
+.env
+.DS_Store
+ios/build
+android/build
+android/.gradle
+.expo
+.expo-shared

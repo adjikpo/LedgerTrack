@@ -1,0 +1,10 @@
+services:
+  init:
+    build: .
+    image: react-native-dev:latest
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    # SUPPRIMÉ: entrypoint: /bin/sh
+    stdin_open: true
+    tty: true
